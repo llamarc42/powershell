@@ -40,7 +40,9 @@
         'Get-OllamaProjectSessionMessage',
         'Add-OllamaProjectSessionMessage',
         'Send-OllamaProjectSessionMessage',
-        'Start-OllamaProjectChat'
+        'Start-OllamaProjectChat',
+        'Get-RetrievalPolicy',
+        'Resolve-RetrievalContext'
     )
 
     # Cmdlets to export from this module
