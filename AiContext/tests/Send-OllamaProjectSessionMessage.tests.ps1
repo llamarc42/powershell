@@ -193,4 +193,58 @@ Describe 'Send-OllamaProjectSessionMessage' {
             $result.PSObject.TypeNames[0] | Should -Be 'Ollama.ProjectSessionChatResult'
         }
     }
+
+    Context 'Pipeline input' {
+        It 'accepts a session object from the pipeline and returns a result' {
+            $result = $session | Send-OllamaProjectSessionMessage -Prompt 'Hello via pipeline'
+            $result.PSObject.TypeNames[0] | Should -Be 'Ollama.ProjectSessionChatResult'
+        }
+    }
+
+    Context '-InspectPrompt switch' {
+        It 'returns a Llamarc42.PromptInspection object' {
+            $result = Send-OllamaProjectSessionMessage -Session $session -Prompt 'Hello' -InspectPrompt
+            $result.PSObject.TypeNames[0] | Should -Be 'Llamarc42.PromptInspection'
+        }
+
+        It 'includes a Messages property in the inspection result' {
+            $result = Send-OllamaProjectSessionMessage -Session $session -Prompt 'Hello' -InspectPrompt
+            $result.PSObject.Properties.Name | Should -Contain 'Messages'
+        }
+
+        It 'includes a SystemPrompt property in the inspection result' {
+            $result = Send-OllamaProjectSessionMessage -Session $session -Prompt 'Hello' -InspectPrompt
+            $result.PSObject.Properties.Name | Should -Contain 'SystemPrompt'
+        }
+
+        It 'does not write messages to the transcript when -InspectPrompt is used' {
+            Send-OllamaProjectSessionMessage -Session $session -Prompt 'Hello' -InspectPrompt | Out-Null
+            $lines = @(Get-Content -LiteralPath $session.MessagesFile | Where-Object { $_ -ne '' })
+            $lines.Count | Should -Be 0
+        }
+
+        It 'does not call Ollama when -InspectPrompt is used' {
+            Send-OllamaProjectSessionMessage -Session $session -Prompt 'Hello' -InspectPrompt | Out-Null
+            Should -Invoke Invoke-RestMethod -ModuleName AiContext -Times 0 -Exactly
+        }
+    }
+
+    Context '-RefreshArtifactFiles switch' {
+        BeforeEach {
+            Mock Add-OllamaProjectSessionMessage -ModuleName AiContext {
+                [pscustomobject]@{ PSTypeName = 'Llamarc42.SessionMessage'; Role = $Role; Content = $Content }
+            }
+            Mock Save-SessionMetadata -ModuleName AiContext {}
+        }
+
+        It 'saves session metadata when -RefreshArtifactFiles is used' {
+            Send-OllamaProjectSessionMessage -Session $session -Prompt 'Hello' -RefreshArtifactFiles | Out-Null
+            Should -Invoke Save-SessionMetadata -ModuleName AiContext -Times 1 -Exactly
+        }
+
+        It 'does not save session metadata when -RefreshArtifactFiles is omitted' {
+            Send-OllamaProjectSessionMessage -Session $session -Prompt 'Hello' | Out-Null
+            Should -Invoke Save-SessionMetadata -ModuleName AiContext -Times 0 -Exactly
+        }
+    }
 }
