@@ -6,22 +6,27 @@ A PowerShell module that implements a **file-based Retrieval-Augmented Generatio
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Folder Convention](#folder-convention)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Retrieval Policy](#retrieval-policy)
-- [Module Reference](#module-reference)
-  - [Path & File Resolution](#path--file-resolution)
-  - [Retrieval Policy & Context](#retrieval-policy--context)
-  - [One-off Ollama Queries](#one-off-ollama-queries)
-  - [Session Management](#session-management)
-  - [Interactive Chat](#interactive-chat)
-  - [Diagnostics](#diagnostics)
-- [Repository Layout](#repository-layout)
-- [Design Notes](#design-notes)
-- [License](#license)
+- [AiContext PowerShell Module](#aicontext-powershell-module)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Folder Convention](#folder-convention)
+  - [Requirements](#requirements)
+  - [Installation](#installation)
+  - [Quick Start](#quick-start)
+    - [One-off query (no session)](#one-off-query-no-session)
+    - [Interactive multi-turn chat](#interactive-multi-turn-chat)
+    - [Session management](#session-management)
+  - [Retrieval Policy](#retrieval-policy)
+  - [Module Reference](#module-reference)
+    - [Path \& File Resolution](#path--file-resolution)
+    - [Retrieval Policy \& Context](#retrieval-policy--context)
+    - [One-off Ollama Queries](#one-off-ollama-queries)
+    - [Session Management](#session-management-1)
+    - [Interactive Chat](#interactive-chat)
+    - [Diagnostics](#diagnostics)
+  - [Repository Layout](#repository-layout)
+  - [Design Notes](#design-notes)
+  - [License](#license)
 
 ---
 
@@ -32,7 +37,7 @@ A PowerShell module that implements a **file-based Retrieval-Augmented Generatio
 The module provides:
 
 | Capability | Description |
-|---|---|
+| --- | --- |
 | **Path resolution** | Automatically discovers the `ai/` workspace root by walking upward from the current directory. |
 | **Context file scanning** | Recursively collects `.md`, `.txt`, and other configured extensions from `ai/global` and `ai/projects/<project>`. |
 | **Retrieval policy** | A declarative YAML policy that controls *which* artifacts are included per conversational intent (`planning`, `coding`, `review`, `general`). |
@@ -45,7 +50,7 @@ The module provides:
 
 The module expects an `ai/` workspace at the root of your repository (or anywhere above your working directory):
 
-```
+```text
 <repo-root>/
 └── ai/
     ├── global/                 # Cross-project context shared by all projects
@@ -69,7 +74,7 @@ The module expects an `ai/` workspace at the root of your repository (or anywher
 ## Requirements
 
 | Requirement | Version |
-|---|---|
+| --- | --- |
 | PowerShell | 7.0+ (Core or Desktop) |
 | [Ollama](https://ollama.com) | Running locally (default: `http://localhost:11434`) |
 | [powershell-yaml](https://github.com/cloudbase/powershell-yaml) | Required for `Get-RetrievalPolicy` / `Resolve-RetrievalContext` |
@@ -179,6 +184,7 @@ retrieval:
 ```
 
 **Selection order** per request:
+
 1. `global.always_include` files (loaded first, ranked highest).
 2. `project.include` baseline files.
 3. Intent-specific `retrieval.strategies.<intent>.include` patterns, sorted by configured folder priority (`high` → `medium` → `low`), capped by `max_files`.
@@ -190,7 +196,7 @@ retrieval:
 ### Path & File Resolution
 
 | Function | Description |
-|---|---|
+| --- | --- |
 | `Resolve-AiContextPath` | Walks upward from `-ProjectFolder` to locate the `ai/projects/<project>` root and resolve the matching `ai/global` folder. |
 | `Get-AiContextFiles` | Recursively scans a path and returns `FileInfo` objects for all files matching the requested extensions. |
 | `Get-AiContextContent` | Reads a set of files and concatenates them into a single string, optionally wrapping each with `BEGIN/END FILE` markers. |
@@ -199,20 +205,20 @@ retrieval:
 ### Retrieval Policy & Context
 
 | Function | Description |
-|---|---|
+| --- | --- |
 | `Get-RetrievalPolicy` | Loads and validates `retrieval.yaml`. Requires the `powershell-yaml` module. Returns a `Llamarc42.RetrievalPolicy` object. |
 | `Resolve-RetrievalContext` | Applies a retrieval policy for a given intent, ranks and deduplicates artifacts, and returns a `Llamarc42.RetrievalContext` with an ordered `Items` list. |
 
 ### One-off Ollama Queries
 
 | Function | Description |
-|---|---|
+| --- | --- |
 | `Invoke-OllamaProjectChat` *(private)* | Builds a full prompt from project context and sends it to the Ollama `/api/generate` endpoint. Used internally; call via `Start-OllamaProjectChat` or directly for scripted use. |
 
 ### Session Management
 
 | Function | Description |
-|---|---|
+| --- | --- |
 | `New-OllamaProjectSession` | Creates a session folder under `.sessions/`, writes `session.json` and an empty `messages.jsonl`. Returns an `Ollama.ProjectSession` object. |
 | `Get-OllamaProjectSession` | Loads a session by id, folder path, or most-recent default. |
 | `Get-OllamaProjectSessionList` | Returns summary info (`Ollama.ProjectSessionInfo`) for all sessions in the project, with optional name filter and result cap. |
@@ -227,20 +233,20 @@ retrieval:
 ### Interactive Chat
 
 | Function | Description |
-|---|---|
+| --- | --- |
 | `Start-OllamaProjectChat` | Entry-point REPL: resolves paths, lets the user resume or create a session, then loops on `Read-Host` until `exit`/`quit`/`:q`. |
 
 ### Diagnostics
 
 | Function | Description |
-|---|---|
+| --- | --- |
 | `Get-OllamaProjectContextDebug` | Resolves the project and global paths, loads the retrieval policy, builds the retrieval context for the requested intent, and returns a `Llamarc42.ContextDebug` object that shows the selected artifact files and the `history.max_messages` / `history.summarize_after` thresholds defined by the policy. Useful for verifying which files will be included in a prompt before actually sending one. |
 
 ---
 
 ## Repository Layout
 
-```
+```text
 powershell/
 ├── AiContext/
 │   ├── AiContext.psd1          # Module manifest (version, exports, metadata)
