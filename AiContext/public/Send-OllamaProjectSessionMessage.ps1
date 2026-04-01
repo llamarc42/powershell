@@ -3,9 +3,10 @@
 Sends a prompt within an Ollama project session.
 
 .DESCRIPTION
-Builds the current artifact-backed context, combines it with recent
-session history, calls the Ollama chat endpoint, stores the user and
-assistant messages, and returns the chat result.
+Loads the retrieval policy, resolves the intent-specific retrieval
+context, combines the retrieved artifacts with recent session history,
+calls the Ollama chat endpoint, stores the user and assistant messages,
+and returns the chat result.
 
 .PARAMETER Session
 The session object to use. Accepts pipeline input.
@@ -25,12 +26,16 @@ Overrides the model stored on the session.
 .PARAMETER Endpoint
 The Ollama chat API endpoint.
 
+.PARAMETER PolicyPath
+The path to the retrieval policy YAML file. When omitted, the default
+retrieval policy for the AI workspace is used.
+
 .PARAMETER IncludeFileHeaders
 Adds file boundary headers to the generated context payload.
 
 .PARAMETER RefreshArtifactFiles
-Refreshes the session's tracked artifact file list from the current
-resolved context.
+Refreshes the session's tracked artifact file list from the resolved
+retrieval context.
 
 .PARAMETER MessageTail
 The number of most recent transcript messages to include as history.
@@ -44,6 +49,9 @@ the normalized result.
 
 .EXAMPLE
 Send-OllamaProjectSessionMessage -Session $session -Prompt 'Summarize the latest design constraints.'
+
+.EXAMPLE
+Send-OllamaProjectSessionMessage -Path $sessionPath -Prompt 'What ADRs affect this change?' -Intent review -PolicyPath './tooling/config/retrieval.yaml'
 
 .OUTPUTS
 Ollama.ProjectSessionChatResult
@@ -69,6 +77,9 @@ function Send-OllamaProjectSessionMessage {
 
         [Parameter()]
         [string]$Endpoint = 'http://localhost:11434/api/chat',
+
+        [Parameter()]
+        [string]$PolicyPath,
 
         [Parameter()]
         [switch]$IncludeFileHeaders,
@@ -101,33 +112,46 @@ function Send-OllamaProjectSessionMessage {
         $Model = $resolvedSession.Model
     }
 
-    $context = Get-AiProjectContext `
+    $policy = Get-RetrievalPolicy `
+        -PolicyPath $PolicyPath `
+        -ProjectFolder $resolvedSession.ProjectFolder
+
+    $retrievalContext = Resolve-RetrievalContext `
+        -Intent $Intent `
         -ProjectFolder $resolvedSession.ProjectFolder `
         -GlobalFolder $resolvedSession.GlobalFolder `
-        -IncludeExtensions $resolvedSession.ArtifactExtensions `
-        -IncludeFileHeaders:$IncludeFileHeaders
+        -Policy $policy `
+        -IncludeExtensions $resolvedSession.ArtifactExtensions
+
+    $retrievalContent = Get-RetrievalContextContent `
+        -RetrievalContext $retrievalContext `
+        -IncludeHeaders:$IncludeFileHeaders
 
     if ($RefreshArtifactFiles) {
-        $resolvedSession.ArtifactFiles = @($context.GlobalFiles + $context.ProjectFiles)
+        $resolvedSession.ArtifactFiles = @($retrievalContext.Files)
     }
 
     $systemMessageContent = @"
 You are a project-aware engineering assistant operating against local documentation artifacts.
 
-Treat the provided GLOBAL CONTEXT and PROJECT CONTEXT as authoritative for this session.
+Treat the provided RETRIEVED CONTEXT as authoritative for this session.
 
 Rules:
 - Do not invent project-specific facts not supported by the provided artifacts.
-- If the artifact context is insufficient, say so explicitly.
+- If the retrieved context is insufficient, say so explicitly.
 - Respect documented constraints and decisions over general best practices.
 - Prefer explicit tradeoffs over absolute recommendations.
 - For architecture-impacting recommendations, call out whether a new ADR may be needed.
 - Keep responses aligned to the user's intent: $Intent.
 - Conversation history provides working context, but artifact documents remain the source of truth.
 
-GLOBAL AND PROJECT CONTEXT
-==========================
-$($context.CombinedContent)
+INTENT
+======
+$Intent
+
+RETRIEVED CONTEXT
+=================
+$($retrievalContent.Content)
 "@.Trim()
 
     $historyMessages = @()
@@ -205,25 +229,28 @@ $($context.CombinedContent)
 
     if ($RawResponse) {
         return [pscustomobject]@{
-            PSTypeName       = 'Ollama.ProjectSessionChatResult'
-            Session          = $resolvedSession
-            Intent           = $Intent
-            Model            = $Model
-            Endpoint         = $Endpoint
-            UserPrompt       = $Prompt
-            AssistantMessage = $assistantMessage
-            Messages         = $chatMessages
-            OllamaResponse   = $response
+            PSTypeName        = 'Ollama.ProjectSessionChatResult'
+            Session           = $resolvedSession
+            Intent            = $Intent
+            Model             = $Model
+            Endpoint          = $Endpoint
+            PolicyPath        = $policy.Path
+            RetrievalContext  = $retrievalContext
+            UserPrompt        = $Prompt
+            AssistantMessage  = $assistantMessage
+            Messages          = $chatMessages
+            OllamaResponse    = $response
         }
     }
 
     return [pscustomobject]@{
-        PSTypeName       = 'Ollama.ProjectSessionChatResult'
-        Session          = $resolvedSession
-        Intent           = $Intent
-        Model            = $Model
-        UserPrompt       = $Prompt
-        AssistantMessage = $assistantMessage
-        Response         = $assistantContent
+        PSTypeName        = 'Ollama.ProjectSessionChatResult'
+        Session           = $resolvedSession
+        Intent            = $Intent
+        Model             = $Model
+        RetrievalContext  = $retrievalContext
+        UserPrompt        = $Prompt
+        AssistantMessage  = $assistantMessage
+        Response          = $assistantContent
     }
 }
