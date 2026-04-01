@@ -1,22 +1,22 @@
-# AiContext PowerShell Module
+# llamarc42 PowerShell Module
 
 A PowerShell module for **architecture-aware, file-based retrieval over local project documentation**, backed by a locally running [Ollama](https://ollama.com) instance.
 
-`AiContext` walks your `ai/projects/<project>` workspace, applies a declarative retrieval policy, and sends **grounded*- prompts to Ollama for either:
+`llamarc42` walks your `ai/projects/<project>` workspace, applies a declarative retrieval policy, and sends **grounded*- prompts to Ollama for either:
 
 - persistent, resumable chat sessions, or
 - programmatic session-based queries
 
-> AiContext does **not*- fine-tune or train the model. It retrieves documentation artifacts at runtime and sends only the selected context to Ollama for each request.
+> llamarc42 does **not*- fine-tune or train the model. It retrieves documentation artifacts at runtime and sends only the selected context to Ollama for each request.
 
 ---
 
 ## Table of Contents
 
-- [AiContext PowerShell Module](#aicontext-powershell-module)
+- [llamarc42 PowerShell Module](#llamarc42-powershell-module)
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
-  - [What AiContext Solves](#what-aicontext-solves)
+  - [What llamarc42 Solves](#what-llamarc42-solves)
   - [How It Works](#how-it-works)
   - [Folder Convention](#folder-convention)
   - [Requirements](#requirements)
@@ -55,7 +55,7 @@ A PowerShell module for **architecture-aware, file-based retrieval over local pr
 
 ## Overview
 
-`AiContext` solves a common problem when working with local AI models:
+`llamarc42` solves a common problem when working with local AI models:
 
 > How do you reliably feed the model the **right*- subset of project documentation without copying and pasting files by hand?
 
@@ -73,7 +73,7 @@ The module provides:
 
 ---
 
-## What AiContext Solves
+## What llamarc42 Solves
 
 Local models are powerful, but without context they do not know your:
 
@@ -83,7 +83,7 @@ Local models are powerful, but without context they do not know your:
 - glossary
 - project-specific rules
 
-AiContext makes local conversations more reliable by ensuring the model sees:
+llamarc42 makes local conversations more reliable by ensuring the model sees:
 
 - your **global documents**
 - your **project documents**
@@ -148,7 +148,7 @@ The module expects an `ai/` workspace above your working directory:
             └── retrieval.yaml         # Retrieval policy
 ````
 
-`Resolve-AiContextPath` walks upward from your current directory until it finds a folder whose parent is `projects/`, then derives both the project root and the `ai/global` sibling automatically.
+`Resolve-Llamarc42Path` walks upward from your current directory until it finds a folder whose parent is `projects/`, then derives both the project root and the `ai/global` sibling automatically.
 
 That means you can run the module from:
 
@@ -186,16 +186,16 @@ Install-Module -Name powershell-yaml -Scope CurrentUser
 
 ## Installation
 
-Clone or copy the `AiContext/` folder to a location on your `$env:PSModulePath`, then import it:
+Clone or copy the `llamarc42/` folder to a location on your `$env:PSModulePath`, then import it:
 
 ```powershell
-Import-Module ./AiContext/AiContext.psd1
+Import-Module ./llamarc42/llamarc42.psd1
 ```
 
 Or import directly by path:
 
 ```powershell
-Import-Module /path/to/powershell/AiContext/AiContext.psd1
+Import-Module /path/to/powershell/llamarc42/llamarc42.psd1
 ```
 
 ---
@@ -207,7 +207,7 @@ Import-Module /path/to/powershell/AiContext/AiContext.psd1
 ```powershell
 Set-Location ai/projects/llamarc42
 
-Start-OllamaProjectChat -Name 'architecture-review' -Intent planning
+Start-Llamarc42ProjectChat -Name 'architecture-review' -Intent planning
 ```
 
 This will:
@@ -225,9 +225,9 @@ Type `exit`, `quit`, or `:q` to end the session.
 ### Resume a prior session and continue it
 
 ```powershell
-$session = Resume-OllamaProjectSession -Name 'architecture'
+$session = Resume-Llamarc42ProjectSession -Name 'architecture'
 
-Send-OllamaProjectSessionMessage `
+Send-Llamarc42ProjectSessionMessage `
     -Session $session `
     -Prompt 'What open questions remain from this discussion?' `
     -Intent planning
@@ -240,7 +240,7 @@ This is useful for continuing a project conversation over hours or days.
 ### Inspect retrieved context before sending anything
 
 ```powershell
-Get-OllamaProjectContextDebug -Intent planning |
+Get-Llamarc42ProjectContextDebug -Intent planning |
     Select-Object -ExpandProperty Files |
     Format-Table Scope, RelativePath, Reason, Priority, OrderRank
 ```
@@ -256,9 +256,9 @@ This shows:
 ### Inspect the exact prompt without calling Ollama
 
 ```powershell
-$session = New-OllamaProjectSession -Name 'prompt-inspection'
+$session = New-Llamarc42ProjectSession -Name 'prompt-inspection'
 
-Send-OllamaProjectSessionMessage `
+Send-Llamarc42ProjectSessionMessage `
     -Session $session `
     -Prompt 'What risks are documented for this project?' `
     -Intent review `
@@ -276,7 +276,7 @@ It is useful for debugging and demos.
 
 ## Retrieval Policy
 
-AiContext uses a YAML retrieval policy at:
+llamarc42 uses a YAML retrieval policy at:
 
 ```text
 ai/tooling/config/retrieval.yaml
@@ -350,7 +350,7 @@ history:
 
 ### Selection order
 
-For each request, AiContext selects files in this order:
+For each request, llamarc42 selects files in this order:
 
 1. `global.always_include`
 2. `project.include`
@@ -362,7 +362,7 @@ Intent-specific matches are then:
 - deduplicated
 - capped by `max_files`
 
-> Current retrieval is policy-driven and file-based. AiContext does **not*- yet use embeddings or semantic vector search; instead it selects artifacts using explicit YAML rules, folder priorities, and per-intent file limits.
+> Current retrieval is policy-driven and file-based. llamarc42 does **not*- yet use embeddings or semantic vector search; instead it selects artifacts using explicit YAML rules, folder priorities, and per-intent file limits.
 
 ---
 
@@ -375,7 +375,7 @@ Start an architecture-focused session:
 ```powershell
 Set-Location ai/projects/llamarc42
 
-Start-OllamaProjectChat -Name 'csharp-core' -Intent planning
+Start-Llamarc42ProjectChat -Name 'csharp-core' -Intent planning
 ```
 
 Then ask:
@@ -397,7 +397,7 @@ Why this is a good demo:
 Start a review-oriented session:
 
 ```powershell
-Start-OllamaProjectChat -Name 'api-boundary-review' -Intent review
+Start-Llamarc42ProjectChat -Name 'api-boundary-review' -Intent review
 ```
 
 Then ask:
@@ -419,19 +419,19 @@ Why this is a good demo:
 List recent sessions:
 
 ```powershell
-Get-OllamaProjectSessionList -First 10
+Get-Llamarc42ProjectSessionList -First 10
 ```
 
 Resume one:
 
 ```powershell
-$session = Resume-OllamaProjectSession -Name 'csharp-core'
+$session = Resume-Llamarc42ProjectSession -Name 'csharp-core'
 ```
 
 Continue the discussion:
 
 ```powershell
-Send-OllamaProjectSessionMessage `
+Send-Llamarc42ProjectSessionMessage `
     -Session $session `
     -Prompt 'Summarize the decisions we have already made and the main open questions.' `
     -Intent planning
@@ -440,7 +440,7 @@ Send-OllamaProjectSessionMessage `
 View the most recent transcript entries:
 
 ```powershell
-Get-OllamaProjectSessionMessage -Session $session -Tail 10
+Get-Llamarc42ProjectSessionMessage -Session $session -Tail 10
 ```
 
 Why this is a good demo:
@@ -453,12 +453,12 @@ Why this is a good demo:
 
 ### Example 4: Programmatic use in scripts
 
-Use AiContext from a script without launching the interactive loop:
+Use llamarc42 from a script without launching the interactive loop:
 
 ```powershell
-$session = New-OllamaProjectSession -Name 'scripted-review'
+$session = New-Llamarc42ProjectSession -Name 'scripted-review'
 
-$result = Send-OllamaProjectSessionMessage `
+$result = Send-Llamarc42ProjectSessionMessage `
     -Session $session `
     -Prompt 'What project risks are currently documented?' `
     -Intent review `
@@ -508,50 +508,50 @@ This makes sessions:
 
 | Function                | Description                                                                                                                                                          |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Resolve-AiContextPath` | Walks upward from `-ProjectFolder` to locate the `ai/projects/<project>` root and resolve the matching `ai/global` folder.                                           |
-| `Get-AiContextFiles`    | Recursively scans a path and returns `FileInfo` objects for all files matching the requested extensions.                                                             |
-| `Get-AiContextContent`  | Reads a set of files and concatenates them into a single string, optionally wrapping each with `BEGIN/END FILE` markers.                                             |
-| `Get-AiProjectContext`  | Combines global and project file scans and content into one object with a `CombinedContent` string. Mainly useful for full-context inspection and earlier workflows. |
+| `Resolve-Llamarc42Path` | Walks upward from `-ProjectFolder` to locate the `ai/projects/<project>` root and resolve the matching `ai/global` folder.                                           |
+| `Get-Llamarc42Files`    | Recursively scans a path and returns `FileInfo` objects for all files matching the requested extensions.                                                             |
+| `Get-Llamarc42Content`  | Reads a set of files and concatenates them into a single string, optionally wrapping each with `BEGIN/END FILE` markers.                                             |
+| `Get-Llamarc42ProjectContext`  | Combines global and project file scans and content into one object with a `CombinedContent` string. Mainly useful for full-context inspection and earlier workflows. |
 
 ### Retrieval Policy & Context
 
 | Function                   | Description                                                                                                                                               |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Get-RetrievalPolicy`      | Loads and validates `retrieval.yaml`. Requires the `powershell-yaml` module. Returns a `Llamarc42.RetrievalPolicy` object.                                |
-| `Resolve-RetrievalContext` | Applies a retrieval policy for a given intent, ranks and deduplicates artifacts, and returns a `Llamarc42.RetrievalContext` with an ordered `Items` list. |
+| `Get-Llamarc42RetrievalPolicy`      | Loads and validates `retrieval.yaml`. Requires the `powershell-yaml` module. Returns a `Llamarc42.RetrievalPolicy` object.                                |
+| `Resolve-Llamarc42RetrievalContext` | Applies a retrieval policy for a given intent, ranks and deduplicates artifacts, and returns a `Llamarc42.RetrievalContext` with an ordered `Items` list. |
 
 ### Session Management
 
 | Function                          | Description                                                                                                                                  |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `New-OllamaProjectSession`        | Creates a session folder under `.sessions/`, writes `session.json` and an empty `messages.jsonl`. Returns an `Ollama.ProjectSession` object. |
-| `Get-OllamaProjectSession`        | Loads a session by id, folder path, or most-recent default.                                                                                  |
-| `Get-OllamaProjectSessionList`    | Returns summary info (`Ollama.ProjectSessionInfo`) for all sessions in the project, with optional name filter and result cap.                |
-| `Select-OllamaProjectSession`     | Interactive prompt that lets the user pick a session from a numbered list.                                                                   |
-| `Resume-OllamaProjectSession`     | Returns the most-recent session or resolves a specific one by partial name/title/id match.                                                   |
-| `Add-OllamaProjectSessionMessage` | Appends a `user`, `assistant`, or `system` message to `messages.jsonl` and updates session metadata.                                         |
-| `Get-OllamaProjectSessionMessage` | Reads messages from `messages.jsonl`, with optional `-Tail` and `-Raw` flags.                                                                |
+| `New-Llamarc42ProjectSession`        | Creates a session folder under `.sessions/`, writes `session.json` and an empty `messages.jsonl`. Returns an `Llamarc42.ProjectSession` object. |
+| `Get-Llamarc42ProjectSession`        | Loads a session by id, folder path, or most-recent default.                                                                                  |
+| `Get-Llamarc42ProjectSessionList`    | Returns summary info (`Llamarc42.ProjectSessionInfo`) for all sessions in the project, with optional name filter and result cap.                |
+| `Select-Llamarc42ProjectSession`     | Interactive prompt that lets the user pick a session from a numbered list.                                                                   |
+| `Resume-Llamarc42ProjectSession`     | Returns the most-recent session or resolves a specific one by partial name/title/id match.                                                   |
+| `Add-Llamarc42ProjectSessionMessage` | Appends a `user`, `assistant`, or `system` message to `messages.jsonl` and updates session metadata.                                         |
+| `Get-Llamarc42ProjectSessionMessage` | Reads messages from `messages.jsonl`, with optional `-Tail` and `-Raw` flags.                                                                |
 
 ### Conversation Scaling & Summarization
 
 | Function                                     | Description                                                                                                                                                                                                                       |
 | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Get-OllamaProjectSessionConversationWindow` | Builds the active conversation window for a session: returns recent messages to include in the next request, identifies older messages that should be folded into the rolling summary, and surfaces the current `RollingSummary`. |
-| `Update-OllamaProjectSessionSummary`         | Produces and persists a condensed rolling summary when older messages exceed the configured threshold.                                                                                                                            |
+| `Get-Llamarc42ProjectSessionConversationWindow` | Builds the active conversation window for a session: returns recent messages to include in the next request, identifies older messages that should be folded into the rolling summary, and surfaces the current `RollingSummary`. |
+| `Update-Llamarc42ProjectSessionSummary`         | Produces and persists a condensed rolling summary when older messages exceed the configured threshold.                                                                                                                            |
 
 ### Chat & Interaction
 
 | Function                           | Description                                                                                                                                                                                                                                                        |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Send-OllamaProjectSessionMessage` | Full retrieval + session pipeline: resolves retrieval context for the intent, updates the rolling summary when needed, builds the request payload, calls `/api/chat`, and persists both the user prompt and assistant reply. Accepts either `-Session` or `-Path`. |
-| `Start-OllamaProjectChat`          | Entry-point REPL: resolves paths, lets the user resume or create a session, then loops on `Read-Host` until `exit`/`quit`/`:q`.                                                                                                                                    |
+| `Send-Llamarc42ProjectSessionMessage` | Full retrieval + session pipeline: resolves retrieval context for the intent, updates the rolling summary when needed, builds the request payload, calls `/api/chat`, and persists both the user prompt and assistant reply. Accepts either `-Session` or `-Path`. |
+| `Start-Llamarc42ProjectChat`          | Entry-point REPL: resolves paths, lets the user resume or create a session, then loops on `Read-Host` until `exit`/`quit`/`:q`.                                                                                                                                    |
 
 ### Diagnostics
 
 | Function                                          | Description                                                                                                                                                                                          |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Get-OllamaProjectContextDebug`                   | Resolves project/global paths, loads the retrieval policy, builds the retrieval context for the requested intent, and returns a debug object showing selected artifact files and history thresholds. |
-| `Send-OllamaProjectSessionMessage -InspectPrompt` | Returns the fully constructed request payload without writing to the transcript or calling Ollama. Useful for debugging and demos.                                                                   |
+| `Get-Llamarc42ProjectContextDebug`                   | Resolves project/global paths, loads the retrieval policy, builds the retrieval context for the requested intent, and returns a debug object showing selected artifact files and history thresholds. |
+| `Send-Llamarc42ProjectSessionMessage -InspectPrompt` | Returns the fully constructed request payload without writing to the transcript or calling Ollama. Useful for debugging and demos.                                                                   |
 
 ---
 
@@ -559,40 +559,40 @@ This makes sessions:
 
 ```text
 powershell/
-├── AiContext/
-│   ├── AiContext.psd1
-│   ├── AiContext.psm1
+├── llamarc42/
+│   ├── llamarc42.psd1
+│   ├── llamarc42.psm1
 │   ├── private/
 │   │   ├── ConvertTo-Slug.ps1
 │   │   ├── Find-ArtifactMatches.ps1
 │   │   ├── Get-ArtifactRelativePath.ps1
 │   │   ├── Get-RetrievalContextContent.ps1
 │   │   ├── Get-SessionTimestamp.ps1
-│   │   ├── Invoke-OllamaProjectChat.ps1
-│   │   ├── New-InteractiveOllamaProjectSession.ps1
+│   │   ├── Invoke-Llamarc42ProjectChat.ps1
+│   │   ├── New-InteractiveLlamarc42ProjectSession.ps1
 │   │   ├── New-SessionObject.ps1
-│   │   ├── Resolve-OllamaProjectSessionByName.ps1
+│   │   ├── Resolve-Llamarc42ProjectSessionByName.ps1
 │   │   ├── Resolve-SessionObject.ps1
 │   │   └── Save-SessionMetadata.ps1
 │   └── public/
-│       ├── Add-OllamaProjectSessionMessage.ps1
-│       ├── Get-AiContextContent.ps1
-│       ├── Get-AiContextFiles.ps1
-│       ├── Get-AiProjectContext.ps1
-│       ├── Get-OllamaProjectContextDebug.ps1
-│       ├── Get-OllamaProjectSession.ps1
-│       ├── Get-OllamaProjectSessionConversationWindow.ps1
-│       ├── Get-OllamaProjectSessionList.ps1
-│       ├── Get-OllamaProjectSessionMessage.ps1
-│       ├── Get-RetrievalPolicy.ps1
-│       ├── New-OllamaProjectSession.ps1
-│       ├── Resolve-AiContextPath.ps1
-│       ├── Resolve-RetrievalContext.ps1
-│       ├── Resume-OllamaProjectSession.ps1
-│       ├── Select-OllamaProjectSession.ps1
-│       ├── Send-OllamaProjectSessionMessage.ps1
-│       ├── Start-OllamaProjectChat.ps1
-│       └── Update-OllamaProjectSessionSummary.ps1
+│       ├── Add-Llamarc42ProjectSessionMessage.ps1
+│       ├── Get-Llamarc42Content.ps1
+│       ├── Get-Llamarc42Files.ps1
+│       ├── Get-Llamarc42ProjectContext.ps1
+│       ├── Get-Llamarc42ProjectContextDebug.ps1
+│       ├── Get-Llamarc42ProjectSession.ps1
+│       ├── Get-Llamarc42ProjectSessionConversationWindow.ps1
+│       ├── Get-Llamarc42ProjectSessionList.ps1
+│       ├── Get-Llamarc42ProjectSessionMessage.ps1
+│       ├── Get-Llamarc42RetrievalPolicy.ps1
+│       ├── New-Llamarc42ProjectSession.ps1
+│       ├── Resolve-Llamarc42Path.ps1
+│       ├── Resolve-Llamarc42RetrievalContext.ps1
+│       ├── Resume-Llamarc42ProjectSession.ps1
+│       ├── Select-Llamarc42ProjectSession.ps1
+│       ├── Send-Llamarc42ProjectSessionMessage.ps1
+│       ├── Start-Llamarc42ProjectChat.ps1
+│       └── Update-Llamarc42ProjectSessionSummary.ps1
 ├── .gitignore
 └── LICENSE
 ```
@@ -602,7 +602,7 @@ powershell/
 ## Design Notes
 
 - **Strict mode**: `Set-StrictMode -Version Latest` and `$ErrorActionPreference = 'Stop'` are set at module load time to surface errors early.
-- **Typed objects**: returned objects carry `PSTypeName` values such as `Ollama.ProjectSession` and `Llamarc42.RetrievalContext`.
+- **Typed objects**: returned objects carry `PSTypeName` values such as `Llamarc42.ProjectSession` and `Llamarc42.RetrievalContext`.
 - **JSONL transcripts**: session messages are stored one JSON object per line in `messages.jsonl`, making them easy to tail, grep, and parse.
 - **No cloud dependency**: all LLM calls go to a local Ollama instance.
 - **Deterministic artifact ordering**: retrieved artifacts are sorted by rank and relative path, ensuring reproducible prompts.
@@ -665,7 +665,7 @@ ai/tooling/config/retrieval.yaml
 Use prompt inspection to verify the constructed request:
 
 ```powershell
-Send-OllamaProjectSessionMessage `
+Send-Llamarc42ProjectSessionMessage `
     -Session $session `
     -Prompt 'Test prompt' `
     -InspectPrompt
