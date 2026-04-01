@@ -52,9 +52,10 @@ BeforeAll {
         PSTypeName = 'Llamarc42.RetrievalPolicy'
         Path       = 'fake.yaml'
         Policy     = @{
-            version = 1
-            global  = @{ always_include = @() }
-            project = @{ include = @(); folders = @{} }
+            version   = 1
+            global    = @{ always_include = @() }
+            project   = @{ include = @(); folders = @{} }
+            history   = $null
             retrieval = @{ strategies = @{ general = @{ include = @(); max_files = 0 }
                 planning = @{ include = @(); max_files = 0 }
                 coding   = @{ include = @(); max_files = 0 }
@@ -137,6 +138,18 @@ Describe 'Send-OllamaProjectSessionMessage' {
         It 'uses the override model when -Model is supplied' {
             $result = Send-OllamaProjectSessionMessage -Session $session -Prompt 'Hello' -Model 'llama3:8b'
             $result.Model | Should -Be 'llama3:8b'
+        }
+    }
+
+    Context 'ConversationWindow in result' {
+        It 'includes a ConversationWindow property in the result' {
+            $result = Send-OllamaProjectSessionMessage -Session $session -Prompt 'Hello AI'
+            $result.PSObject.Properties.Name | Should -Contain 'ConversationWindow'
+        }
+
+        It 'ConversationWindow has the Llamarc42.ConversationWindow type' {
+            $result = Send-OllamaProjectSessionMessage -Session $session -Prompt 'Hello AI'
+            $result.ConversationWindow.PSObject.TypeNames[0] | Should -Be 'Llamarc42.ConversationWindow'
         }
     }
 
