@@ -4,9 +4,11 @@ Sends a prompt within an Ollama project session.
 
 .DESCRIPTION
 Loads the retrieval policy, resolves the intent-specific retrieval
-context, combines the retrieved artifacts with recent session history,
-calls the Ollama chat endpoint, stores the user and assistant messages,
-and returns the chat result.
+context, updates the rolling conversation summary when older transcript
+messages need to be condensed, combines the retrieved artifacts with the
+rolling summary and recent session history, calls the Ollama chat
+endpoint, stores the user and assistant messages, and returns the chat
+result.
 
 .PARAMETER Session
 The session object to use. Accepts pipeline input.
@@ -38,7 +40,9 @@ Refreshes the session's tracked artifact file list from the resolved
 retrieval context.
 
 .PARAMETER MessageTail
-The number of most recent transcript messages to include as history.
+The default maximum number of recent transcript messages to retain in
+the active conversation window when the retrieval policy does not define
+`history.max_messages`.
 
 .PARAMETER TimeoutSec
 The request timeout in seconds.
@@ -52,6 +56,9 @@ Send-OllamaProjectSessionMessage -Session $session -Prompt 'Summarize the latest
 
 .EXAMPLE
 Send-OllamaProjectSessionMessage -Path $sessionPath -Prompt 'What ADRs affect this change?' -Intent review -PolicyPath './tooling/config/retrieval.yaml'
+
+.EXAMPLE
+Send-OllamaProjectSessionMessage -Session $session -Prompt 'Continue the refactor plan.' -MessageTail 40 -RefreshArtifactFiles
 
 .OUTPUTS
 Ollama.ProjectSessionChatResult
@@ -131,7 +138,54 @@ function Send-OllamaProjectSessionMessage {
         $resolvedSession.ArtifactFiles = @($retrievalContext.Files)
     }
 
-    $systemMessageContent = @"
+    $historyMaxMessages = $MessageTail
+    $historySummarizeAfter = 30
+
+    if ($policy.Policy.history) {
+        if ($policy.Policy.history.PSObject.Properties.Name -contains 'max_messages') {
+            $historyMaxMessages = [int]$policy.Policy.history.max_messages
+        }
+
+        if ($policy.Policy.history.PSObject.Properties.Name -contains 'summarize_after') {
+            $historySummarizeAfter = [int]$policy.Policy.history.summarize_after
+        }
+    }
+
+    $resolvedSession = Update-OllamaProjectSessionSummary `
+        -Session $resolvedSession `
+        -Model $Model `
+        -Endpoint $Endpoint `
+        -MaxMessages $historyMaxMessages `
+        -SummarizeAfter $historySummarizeAfter `
+        -TimeoutSec $TimeoutSec
+
+    $conversationWindow = Get-OllamaProjectSessionConversationWindow `
+        -Session $resolvedSession `
+        -MaxMessages $historyMaxMessages `
+        -SummarizeAfter $historySummarizeAfter
+
+    $rollingSummaryText = $conversationWindow.RollingSummary
+    if ([string]::IsNullOrWhiteSpace($rollingSummaryText)) {
+        $rollingSummaryText = 'No rolling conversation summary yet.'
+    }
+
+    $historyMessages = @()
+    foreach ($message in $conversationWindow.RecentMessages) {
+        $historyMessages += @{
+            role    = $message.Role
+            content = $message.Content
+        }
+    }
+
+    Add-OllamaProjectSessionMessage `
+        -Session $resolvedSession `
+        -Role user `
+        -Content $Prompt | Out-Null
+
+    $chatMessages = @(
+        @{
+            role    = 'system'
+            content = @"
 You are a project-aware engineering assistant operating against local documentation artifacts.
 
 Treat the provided RETRIEVED CONTEXT as authoritative for this session.
@@ -149,34 +203,14 @@ INTENT
 ======
 $Intent
 
+ROLLING CONVERSATION SUMMARY
+============================
+$rollingSummaryText
+
 RETRIEVED CONTEXT
 =================
 $($retrievalContent.Content)
 "@.Trim()
-
-    $historyMessages = @()
-    $sessionHistory = Get-OllamaProjectSessionMessage -Session $resolvedSession
-
-    if ($MessageTail -gt 0) {
-        $sessionHistory = @($sessionHistory | Select-Object -Last $MessageTail)
-    }
-
-    foreach ($message in $sessionHistory) {
-        $historyMessages += @{
-            role    = $message.Role
-            content = $message.Content
-        }
-    }
-
-    Add-OllamaProjectSessionMessage `
-        -Session $resolvedSession `
-        -Role user `
-        -Content $Prompt | Out-Null
-
-    $chatMessages = @(
-        @{
-            role    = 'system'
-            content = $systemMessageContent
         }
     ) + $historyMessages + @(
         @{
@@ -229,28 +263,30 @@ $($retrievalContent.Content)
 
     if ($RawResponse) {
         return [pscustomobject]@{
-            PSTypeName        = 'Ollama.ProjectSessionChatResult'
-            Session           = $resolvedSession
-            Intent            = $Intent
-            Model             = $Model
-            Endpoint          = $Endpoint
-            PolicyPath        = $policy.Path
-            RetrievalContext  = $retrievalContext
-            UserPrompt        = $Prompt
-            AssistantMessage  = $assistantMessage
-            Messages          = $chatMessages
-            OllamaResponse    = $response
+            PSTypeName       = 'Ollama.ProjectSessionChatResult'
+            Session          = $resolvedSession
+            Intent           = $Intent
+            Model            = $Model
+            Endpoint         = $Endpoint
+            PolicyPath       = $policy.Path
+            RetrievalContext = $retrievalContext
+            ConversationWindow = $conversationWindow
+            UserPrompt       = $Prompt
+            AssistantMessage = $assistantMessage
+            Messages         = $chatMessages
+            OllamaResponse   = $response
         }
     }
 
     return [pscustomobject]@{
-        PSTypeName        = 'Ollama.ProjectSessionChatResult'
-        Session           = $resolvedSession
-        Intent            = $Intent
-        Model             = $Model
-        RetrievalContext  = $retrievalContext
-        UserPrompt        = $Prompt
-        AssistantMessage  = $assistantMessage
-        Response          = $assistantContent
+        PSTypeName         = 'Ollama.ProjectSessionChatResult'
+        Session            = $resolvedSession
+        Intent             = $Intent
+        Model              = $Model
+        RetrievalContext   = $retrievalContext
+        ConversationWindow = $conversationWindow
+        UserPrompt         = $Prompt
+        AssistantMessage   = $assistantMessage
+        Response           = $assistantContent
     }
 }
