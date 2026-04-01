@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 $script:ModuleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # Dot-source Private first
-$private = Join-Path $script:ModuleRoot 'Private'
+$private = Join-Path $script:ModuleRoot 'private'
 if (Test-Path $private)
 {
     Get-ChildItem -Path $private -Filter '*.ps1' | Sort-Object FullName | ForEach-Object {
@@ -13,7 +13,7 @@ if (Test-Path $private)
 }
 
 # Then Public
-$public = Join-Path $script:ModuleRoot 'Public'
+$public = Join-Path $script:ModuleRoot 'public'
 if (Test-Path $public)
 {
     Get-ChildItem -Path $public -Filter '*.ps1' | Sort-Object FullName | ForEach-Object {
@@ -21,7 +21,7 @@ if (Test-Path $public)
     }
 }
 
-# Export public functions (based on Public folder)
+# Export public functions (based on public folder)
 $publicFunctions = @()
 if (Test-Path $public)
 {
