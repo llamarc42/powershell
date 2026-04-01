@@ -47,6 +47,11 @@ the active conversation window when the retrieval policy does not define
 .PARAMETER TimeoutSec
 The request timeout in seconds.
 
+.PARAMETER InspectPrompt
+Returns the fully constructed prompt payload for inspection and exits
+before writing the user message to `messages.jsonl` and before calling
+the Ollama endpoint.
+
 .PARAMETER RawResponse
 Returns the raw Ollama response and full message payload in addition to
 the normalized result.
@@ -59,6 +64,9 @@ Send-OllamaProjectSessionMessage -Path $sessionPath -Prompt 'What ADRs affect th
 
 .EXAMPLE
 Send-OllamaProjectSessionMessage -Session $session -Prompt 'Continue the refactor plan.' -MessageTail 40 -RefreshArtifactFiles
+
+.EXAMPLE
+Send-OllamaProjectSessionMessage -Session $session -Prompt 'Show me the exact payload.' -InspectPrompt
 
 .OUTPUTS
 Ollama.ProjectSessionChatResult
@@ -99,6 +107,9 @@ function Send-OllamaProjectSessionMessage {
 
         [Parameter()]
         [int]$TimeoutSec = 300,
+
+        [Parameter()]
+        [switch]$InspectPrompt,
 
         [Parameter()]
         [switch]$RawResponse
@@ -177,15 +188,7 @@ function Send-OllamaProjectSessionMessage {
         }
     }
 
-    Add-OllamaProjectSessionMessage `
-        -Session $resolvedSession `
-        -Role user `
-        -Content $Prompt | Out-Null
-
-    $chatMessages = @(
-        @{
-            role    = 'system'
-            content = @"
+    $systemPrompt = @"
 You are a project-aware engineering assistant operating against local documentation artifacts.
 
 Treat the provided RETRIEVED CONTEXT as authoritative for this session.
@@ -211,6 +214,11 @@ RETRIEVED CONTEXT
 =================
 $($retrievalContent.Content)
 "@.Trim()
+
+    $chatMessages = @(
+        @{
+            role    = 'system'
+            content = $systemPrompt
         }
     ) + $historyMessages + @(
         @{
@@ -219,11 +227,34 @@ $($retrievalContent.Content)
         }
     )
 
-    $body = @{
+    $requestBody = @{
         model    = $Model
         stream   = $false
         messages = $chatMessages
-    } | ConvertTo-Json -Depth 20
+    }
+
+    if ($InspectPrompt) {
+        return [pscustomobject]@{
+            PSTypeName         = 'Llamarc42.PromptInspection'
+            Session            = $resolvedSession
+            Intent             = $Intent
+            Model              = $Model
+            Endpoint           = $Endpoint
+            PolicyPath         = $policy.Path
+            RetrievalContext   = $retrievalContext
+            ConversationWindow = $conversationWindow
+            SystemPrompt       = $systemPrompt
+            Messages           = $chatMessages
+            RequestBody        = $requestBody
+        }
+    }
+
+    Add-OllamaProjectSessionMessage `
+        -Session $resolvedSession `
+        -Role user `
+        -Content $Prompt | Out-Null
+
+    $body = $requestBody | ConvertTo-Json -Depth 20
 
     try {
         $response = Invoke-RestMethod `
@@ -231,10 +262,29 @@ $($retrievalContent.Content)
             -Method Post `
             -ContentType 'application/json' `
             -Body $body `
-            -TimeoutSec $TimeoutSec
+            -TimeoutSec $TimeoutSec `
+            -ErrorAction Stop
     }
     catch {
-        throw "Failed to call Ollama chat endpoint '$Endpoint'. $($_.Exception.Message)"
+        $message = $_.Exception.Message
+
+        if ($message -match 'timed out') {
+            throw "Ollama request timed out after $TimeoutSec seconds. Endpoint: $Endpoint"
+        }
+
+        if ($message -match 'actively refused' -or $message -match 'No connection could be made') {
+            throw "Could not connect to Ollama at '$Endpoint'. Ensure Ollama is running and the endpoint is correct."
+        }
+
+        if ($message -match '404') {
+            throw "Ollama endpoint '$Endpoint' was not found. Verify the Ollama API path."
+        }
+
+        if ($message -match '500') {
+            throw "Ollama returned an internal server error. Check the Ollama process and model availability."
+        }
+
+        throw "Failed to call Ollama chat endpoint '$Endpoint'. $message"
     }
 
     $assistantContent = $null
@@ -247,7 +297,14 @@ $($retrievalContent.Content)
     }
 
     if ([string]::IsNullOrWhiteSpace($assistantContent)) {
-        throw 'Ollama did not return assistant message content.'
+        $responsePreview = try {
+            $response | ConvertTo-Json -Depth 10 -Compress
+        }
+        catch {
+            '<unavailable>'
+        }
+
+        throw "Ollama did not return assistant message content. Response preview: $responsePreview"
     }
 
     $assistantMessage = Add-OllamaProjectSessionMessage `
@@ -263,18 +320,19 @@ $($retrievalContent.Content)
 
     if ($RawResponse) {
         return [pscustomobject]@{
-            PSTypeName       = 'Ollama.ProjectSessionChatResult'
-            Session          = $resolvedSession
-            Intent           = $Intent
-            Model            = $Model
-            Endpoint         = $Endpoint
-            PolicyPath       = $policy.Path
-            RetrievalContext = $retrievalContext
+            PSTypeName         = 'Ollama.ProjectSessionChatResult'
+            Session            = $resolvedSession
+            Intent             = $Intent
+            Model              = $Model
+            Endpoint           = $Endpoint
+            PolicyPath         = $policy.Path
+            RetrievalContext   = $retrievalContext
             ConversationWindow = $conversationWindow
-            UserPrompt       = $Prompt
-            AssistantMessage = $assistantMessage
-            Messages         = $chatMessages
-            OllamaResponse   = $response
+            UserPrompt         = $Prompt
+            AssistantMessage   = $assistantMessage
+            Messages           = $chatMessages
+            RequestBody        = $requestBody
+            OllamaResponse     = $response
         }
     }
 

@@ -3,7 +3,7 @@
     RootModule = 'AiContext.psm1'
 
     # Version number of this module.
-    ModuleVersion = '0.1.0'
+    ModuleVersion = '1.0.0'
 
     # Supported PSEditions
     CompatiblePSEditions = @('Core', 'Desktop')
@@ -32,6 +32,7 @@
         'Get-AiContextContent',
         'Get-AiContextFiles',
         'Get-AiProjectContext',
+        'Get-OllamaProjectContextDebug',
         'Get-OllamaProjectSession',
         'Get-OllamaProjectSessionConversationWindow',
         'Get-OllamaProjectSessionList',
