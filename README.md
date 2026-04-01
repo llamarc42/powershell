@@ -219,7 +219,9 @@ retrieval:
 | `Resume-OllamaProjectSession` | Returns the most-recent session or resolves a specific one by partial name/title/id match. |
 | `Add-OllamaProjectSessionMessage` | Appends a `user`, `assistant`, or `system` message to `messages.jsonl` and updates session metadata. |
 | `Get-OllamaProjectSessionMessage` | Reads messages from `messages.jsonl`, with optional `-Tail` and `-Raw` flags. |
-| `Send-OllamaProjectSessionMessage` | Full RAG + chat pipeline: resolves retrieval context for the intent, builds the message array (system + history + user), calls `/api/chat`, and persists both the user prompt and assistant reply. |
+| `Get-OllamaProjectSessionConversationWindow` | Builds the active conversation window for a session: returns the most recent messages to include in the next request, identifies older messages that should be folded into the rolling summary, and surfaces the current `RollingSummary`. Returns a `Llamarc42.ConversationWindow` object. |
+| `Update-OllamaProjectSessionSummary` | Inspects the session transcript and, when older messages exceed the configured `SummarizeAfter` threshold, sends them to the Ollama `/api/chat` endpoint to produce a condensed rolling summary. Persists the updated summary to `session.json` and returns the updated session. |
+| `Send-OllamaProjectSessionMessage` | Full RAG + chat pipeline: resolves retrieval context for the intent, updates the rolling conversation summary via `Update-OllamaProjectSessionSummary` when needed, builds the message array (system + rolling summary + history + user) via `Get-OllamaProjectSessionConversationWindow`, calls `/api/chat`, and persists both the user prompt and assistant reply. |
 
 ### Interactive Chat
 
@@ -254,6 +256,7 @@ powershell/
 │       ├── Get-AiContextFiles.ps1
 │       ├── Get-AiProjectContext.ps1
 │       ├── Get-OllamaProjectSession.ps1
+│       ├── Get-OllamaProjectSessionConversationWindow.ps1
 │       ├── Get-OllamaProjectSessionList.ps1
 │       ├── Get-OllamaProjectSessionMessage.ps1
 │       ├── Get-RetrievalPolicy.ps1
@@ -263,7 +266,8 @@ powershell/
 │       ├── Resume-OllamaProjectSession.ps1
 │       ├── Select-OllamaProjectSession.ps1
 │       ├── Send-OllamaProjectSessionMessage.ps1
-│       └── Start-OllamaProjectChat.ps1
+│       ├── Start-OllamaProjectChat.ps1
+│       └── Update-OllamaProjectSessionSummary.ps1
 ├── .gitignore
 └── LICENSE
 ```
