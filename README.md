@@ -18,6 +18,7 @@ A PowerShell module that implements a **file-based Retrieval-Augmented Generatio
   - [One-off Ollama Queries](#one-off-ollama-queries)
   - [Session Management](#session-management)
   - [Interactive Chat](#interactive-chat)
+  - [Diagnostics](#diagnostics)
 - [Repository Layout](#repository-layout)
 - [Design Notes](#design-notes)
 - [License](#license)
@@ -221,13 +222,19 @@ retrieval:
 | `Get-OllamaProjectSessionMessage` | Reads messages from `messages.jsonl`, with optional `-Tail` and `-Raw` flags. |
 | `Get-OllamaProjectSessionConversationWindow` | Builds the active conversation window for a session: returns the most recent messages to include in the next request, identifies older messages that should be folded into the rolling summary, and surfaces the current `RollingSummary`. Returns a `Llamarc42.ConversationWindow` object. |
 | `Update-OllamaProjectSessionSummary` | Inspects the session transcript and, when older messages exceed the configured `SummarizeAfter` threshold, sends them to the Ollama `/api/chat` endpoint to produce a condensed rolling summary. Persists the updated summary to `session.json` and returns the updated session. |
-| `Send-OllamaProjectSessionMessage` | Full RAG + chat pipeline: resolves retrieval context for the intent, updates the rolling conversation summary via `Update-OllamaProjectSessionSummary` when needed, builds the message array (system + rolling summary + history + user) via `Get-OllamaProjectSessionConversationWindow`, calls `/api/chat`, and persists both the user prompt and assistant reply. |
+| `Send-OllamaProjectSessionMessage` | Full RAG + chat pipeline: resolves retrieval context for the intent, updates the rolling conversation summary via `Update-OllamaProjectSessionSummary` when needed, builds the message array (system + rolling summary + history + user) via `Get-OllamaProjectSessionConversationWindow`, calls `/api/chat`, and persists both the user prompt and assistant reply. Accepts a session object (`-Session`) or a path to a session folder (`-Path`). Use `-InspectPrompt` to return the fully constructed request payload without writing messages or calling the endpoint. Use `-RawResponse` to include the raw Ollama response and full message array alongside the normalized result. Use `-RefreshArtifactFiles` to update the session's tracked artifact file list from the resolved retrieval context. |
 
 ### Interactive Chat
 
 | Function | Description |
 |---|---|
 | `Start-OllamaProjectChat` | Entry-point REPL: resolves paths, lets the user resume or create a session, then loops on `Read-Host` until `exit`/`quit`/`:q`. |
+
+### Diagnostics
+
+| Function | Description |
+|---|---|
+| `Get-OllamaProjectContextDebug` | Resolves the project and global paths, loads the retrieval policy, builds the retrieval context for the requested intent, and returns a `Llamarc42.ContextDebug` object that shows the selected artifact files and the `history.max_messages` / `history.summarize_after` thresholds defined by the policy. Useful for verifying which files will be included in a prompt before actually sending one. |
 
 ---
 
@@ -255,6 +262,7 @@ powershell/
 │       ├── Get-AiContextContent.ps1
 │       ├── Get-AiContextFiles.ps1
 │       ├── Get-AiProjectContext.ps1
+│       ├── Get-OllamaProjectContextDebug.ps1
 │       ├── Get-OllamaProjectSession.ps1
 │       ├── Get-OllamaProjectSessionConversationWindow.ps1
 │       ├── Get-OllamaProjectSessionList.ps1
