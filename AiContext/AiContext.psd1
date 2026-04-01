@@ -28,21 +28,23 @@
 
     # Functions to export from this module
     FunctionsToExport = @(
-        'Resolve-AiContextPath',
-        'Get-AiContextFiles',
-        'Get-AiContextContent',
-        'Get-AiProjectContext',
-        'New-OllamaProjectSession',
-        'Get-OllamaProjectSession',
-        'Get-OllamaProjectSessionList',
-        'Select-OllamaProjectSession',
-        'Resume-OllamaProjectSession',
-        'Get-OllamaProjectSessionMessage',
         'Add-OllamaProjectSessionMessage',
+        'Get-AiContextContent',
+        'Get-AiContextFiles',
+        'Get-AiProjectContext',
+        'Get-OllamaProjectSession',
+        'Get-OllamaProjectSessionConversationWindow',
+        'Get-OllamaProjectSessionList',
+        'Get-OllamaProjectSessionMessage',
+        'Get-RetrievalPolicy',
+        'New-OllamaProjectSession',
+        'Resolve-AiContextPath',
+        'Resolve-RetrievalContext',
+        'Resume-OllamaProjectSession',
+        'Select-OllamaProjectSession',
         'Send-OllamaProjectSessionMessage',
         'Start-OllamaProjectChat',
-        'Get-RetrievalPolicy',
-        'Resolve-RetrievalContext'
+        'Update-OllamaProjectSessionSummary'
     )
 
     # Cmdlets to export from this module
