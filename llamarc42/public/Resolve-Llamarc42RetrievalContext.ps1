@@ -184,11 +184,19 @@ function Resolve-Llamarc42RetrievalContext {
         $matches = @(Find-ArtifactMatches -Files $projectFiles -RootPath $paths.ProjectFolder -Pattern $pattern)
 
         foreach ($match in $matches) {
-            $folderName = ($match.RelativePath -split '/')[0]
+            $pathParts = $match.RelativePath -split '/'
+            $folderName = $null
             $priorityName = 'default'
 
-            if ($policyObject.project.folders.$folderName) {
-                $priorityName = [string]$policyObject.project.folders.$folderName.priority
+            if ($pathParts.Count -gt 1) {
+                $folderName = $pathParts[0]
+
+                if (
+                    $policyObject.project.PSObject.Properties['folders'] -and
+                    $policyObject.project.folders.PSObject.Properties[$folderName]
+                ) {
+                    $priorityName = [string]$policyObject.project.folders.PSObject.Properties[$folderName].Value.priority
+                }
             }
 
             $priorityRank = if ($folderPriorityMap.ContainsKey($priorityName)) {
