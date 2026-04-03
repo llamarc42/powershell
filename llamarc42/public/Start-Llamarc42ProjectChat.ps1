@@ -54,7 +54,7 @@ function Start-Llamarc42ProjectChat {
         [string]$Name,
 
         [Parameter()]
-        [string]$Model = 'gpt-oss:20b',
+        [string]$Model,
 
         [Parameter()]
         [ValidateSet('planning', 'coding', 'review', 'general')]
@@ -72,6 +72,20 @@ function Start-Llamarc42ProjectChat {
         [Parameter()]
         [int]$TimeoutSec = 300
     )
+
+    $sendParams = @{
+    Session              = $session
+    Prompt               = $prompt
+    Intent               = $Intent
+    IncludeFileHeaders   = $IncludeFileHeaders
+    RefreshArtifactFiles = $RefreshArtifactFiles
+    MessageTail          = $MessageTail
+    TimeoutSec           = $TimeoutSec
+    }
+
+    if ($PSBoundParameters.ContainsKey('Model') -and -not [string]::IsNullOrWhiteSpace($Model)) {
+        $sendParams.Model = $Model
+    }
 
     $paths = Resolve-Llamarc42Path -ProjectFolder $ProjectFolder -GlobalFolder $GlobalFolder
     $sessions = @(Get-Llamarc42ProjectSessionList -ProjectFolder $paths.ProjectFolder)
@@ -146,15 +160,7 @@ function Start-Llamarc42ProjectChat {
         }
 
         try {
-            $result = Send-Llamarc42ProjectSessionMessage `
-                -Session $session `
-                -Prompt $prompt `
-                -Intent $Intent `
-                -Model $Model `
-                -IncludeFileHeaders:$IncludeFileHeaders `
-                -RefreshArtifactFiles:$RefreshArtifactFiles `
-                -MessageTail $MessageTail `
-                -TimeoutSec $TimeoutSec
+            $result = Send-Llamarc42ProjectSessionMessage @sendParams
 
             Write-Host ''
             Write-Host 'Assistant:' -ForegroundColor Green
