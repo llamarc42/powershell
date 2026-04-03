@@ -268,6 +268,27 @@ $($retrievalContent.Content)
     catch {
         $message = $_.Exception.Message
 
+        $statusCode = $null
+        $responseBody = $null
+
+        if ($_.Exception.Response) {
+            try {
+                $statusCode = [int]$_.Exception.Response.StatusCode
+            }
+            catch {}
+
+            try {
+                $stream = $_.Exception.Response.GetResponseStream()
+                if ($stream) {
+                    $reader = [System.IO.StreamReader]::new($stream)
+                    $responseBody = $reader.ReadToEnd()
+                    $reader.Dispose()
+                }
+            }
+            catch {}
+        }
+
+        # --- Network / connectivity errors (keep these early) ---
         if ($message -match 'timed out') {
             throw "Ollama request timed out after $TimeoutSec seconds. Endpoint: $Endpoint"
         }
@@ -276,17 +297,18 @@ $($retrievalContent.Content)
             throw "Could not connect to Ollama at '$Endpoint'. Ensure Ollama is running and the endpoint is correct."
         }
 
-        if ($message -match '404') {
-            throw "Ollama endpoint '$Endpoint' was not found. Verify the Ollama API path."
+        # --- HTTP status-based handling (NEW) ---
+        if ($statusCode -eq 404) {
+            throw "Ollama returned HTTP 404. This may mean the endpoint path is wrong OR the model is unavailable. Response: $responseBody"
         }
 
-        if ($message -match '500') {
-            throw "Ollama returned an internal server error. Check the Ollama process and model availability."
+        if ($statusCode -eq 500) {
+            throw "Ollama returned HTTP 500. Response: $responseBody"
         }
 
-        throw "Failed to call Ollama chat endpoint '$Endpoint'. $message"
+        # --- Fallback ---
+        throw "Failed to call Ollama chat endpoint '$Endpoint'. $message Response: $responseBody"
     }
-
     $assistantContent = $null
 
     if ($response.message -and $response.message.content) {
