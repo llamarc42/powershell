@@ -73,20 +73,6 @@ function Start-Llamarc42ProjectChat {
         [int]$TimeoutSec = 300
     )
 
-    $sendParams = @{
-    Session              = $session
-    Prompt               = $prompt
-    Intent               = $Intent
-    IncludeFileHeaders   = $IncludeFileHeaders
-    RefreshArtifactFiles = $RefreshArtifactFiles
-    MessageTail          = $MessageTail
-    TimeoutSec           = $TimeoutSec
-    }
-
-    if ($PSBoundParameters.ContainsKey('Model') -and -not [string]::IsNullOrWhiteSpace($Model)) {
-        $sendParams.Model = $Model
-    }
-
     $paths = Resolve-Llamarc42Path -ProjectFolder $ProjectFolder -GlobalFolder $GlobalFolder
     $sessions = @(Get-Llamarc42ProjectSessionList -ProjectFolder $paths.ProjectFolder)
     $session = $null
@@ -148,6 +134,20 @@ function Start-Llamarc42ProjectChat {
 
     while ($true) {
         $prompt = Read-Host 'You'
+
+            $sendParams = @{
+            Session              = $session
+            Prompt               = $prompt
+            Intent               = $Intent
+            IncludeFileHeaders   = $IncludeFileHeaders
+            RefreshArtifactFiles = $RefreshArtifactFiles
+            MessageTail          = $MessageTail
+            TimeoutSec           = $TimeoutSec
+            }
+
+        if ($PSBoundParameters.ContainsKey('Model') -and -not [string]::IsNullOrWhiteSpace($Model)) {
+            $sendParams.Model = $Model
+        }
 
         if ([string]::IsNullOrWhiteSpace($prompt)) {
             continue
