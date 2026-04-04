@@ -266,19 +266,20 @@ $($retrievalContent.Content)
             -ErrorAction Stop
     }
     catch {
-        $message = $_.Exception.Message
+        $exception = $_.Exception
+        $message = $exception.Message
 
         $statusCode = $null
         $responseBody = $null
 
-        if ($_.Exception.Response) {
+        if ($exception.Response) {
             try {
-                $statusCode = [int]$_.Exception.Response.StatusCode
+                $statusCode = [int]$exception.Response.StatusCode
             }
             catch {}
 
             try {
-                $stream = $_.Exception.Response.GetResponseStream()
+                $stream = $exception.Response.GetResponseStream()
                 if ($stream) {
                     $reader = [System.IO.StreamReader]::new($stream)
                     $responseBody = $reader.ReadToEnd()
@@ -288,26 +289,42 @@ $($retrievalContent.Content)
             catch {}
         }
 
-        # --- Network / connectivity errors (keep these early) ---
+        if ([string]::IsNullOrWhiteSpace($responseBody)) {
+            $responseBody = '<no response body returned>'
+        }
+
         if ($message -match 'timed out') {
-            throw "Ollama request timed out after $TimeoutSec seconds. Endpoint: $Endpoint"
+            throw [System.Exception]::new(
+                "Ollama request timed out after $TimeoutSec seconds. Endpoint: $Endpoint",
+                $exception
+            )
         }
 
         if ($message -match 'actively refused' -or $message -match 'No connection could be made') {
-            throw "Could not connect to Ollama at '$Endpoint'. Ensure Ollama is running and the endpoint is correct."
+            throw [System.Exception]::new(
+                "Could not connect to Ollama at '$Endpoint'. Ensure Ollama is running and the endpoint is correct. Original error: $message",
+                $exception
+            )
         }
 
-        # --- HTTP status-based handling (NEW) ---
         if ($statusCode -eq 404) {
-            throw "Ollama returned HTTP 404. This may mean the endpoint path is wrong OR the model is unavailable. Response: $responseBody"
+            throw [System.Exception]::new(
+                "Ollama returned HTTP 404 for model '$Model' at '$Endpoint'. Response: $responseBody. Original error: $message",
+                $exception
+            )
         }
 
         if ($statusCode -eq 500) {
-            throw "Ollama returned HTTP 500. Response: $responseBody"
+            throw [System.Exception]::new(
+                "Ollama returned HTTP 500 for model '$Model' at '$Endpoint'. Response: $responseBody. Original error: $message",
+                $exception
+            )
         }
 
-        # --- Fallback ---
-        throw "Failed to call Ollama chat endpoint '$Endpoint'. $message Response: $responseBody"
+        throw [System.Exception]::new(
+            "Failed to call Ollama chat endpoint '$Endpoint' for model '$Model'. Response: $responseBody. Original error: $message",
+            $exception
+        )
     }
     $assistantContent = $null
 
