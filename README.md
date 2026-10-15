@@ -1,5 +1,14 @@
 # llamarc42 PowerShell Module
 
+> [!IMPORTANT]
+> **Historical prototype and reference implementation.** This README documents
+> the preserved local-copilot module and its actual usage. PowerShell is not a
+> required wrapper, bootstrap surface, or runtime dependency of the current
+> llamarc42 v0.1 documentation framework. Current product scope and repository
+> responsibilities are defined in the
+> [`llamarc42/docs` project definition](https://github.com/llamarc42/docs/blob/main/projects/llamarc42/project.md)
+> and [ADR-006](https://github.com/llamarc42/docs/blob/main/projects/llamarc42/decisions/ADR-006-framework-repository-responsibilities.md).
+
 A PowerShell module for **architecture-aware, file-based retrieval over local project documentation**, backed by a locally running [Ollama](https://ollama.com) instance.
 
 `llamarc42` walks your `ai/projects/<project>` workspace, applies a declarative retrieval policy, and sends **grounded*- prompts to Ollama for either:
